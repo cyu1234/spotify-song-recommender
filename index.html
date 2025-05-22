@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Song Recommender</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Theme toggle button styles */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 50px;
+      padding: 5px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .theme-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    
+    .theme-toggle i {
+      font-size: 1.2rem;
+      color: var(--text-primary);
+    }
+    
+    .theme-toggle .theme-icon-light {
+      display: block;
+    }
+    
+    .theme-toggle .theme-icon-dark {
+      display: none;
+    }
+    
+    [data-theme="light"] .theme-toggle .theme-icon-light {
+      display: none;
+    }
+    
+    [data-theme="light"] .theme-toggle .theme-icon-dark {
+      display: block;
+    }
+    
+    :root {
+      /* Dark mode (default) */
+      --spotify-green: #1DB954;
+      --spotify-green-hover: #1ed760;
+      --dark-bg: #121212;
+      --card-bg: #181818;
+      --card-hover: #282828;
+      --input-bg: #242424;
+      --text-primary: #ffffff;
+      --text-secondary: #d1d1d1; /* Brightened for better readability */
+      --text-tertiary: #a0a0a0; /* Brightened for better readability */
+      --border-color: rgba(255,255,255,0.1);
+      --alert-info-bg: rgba(29, 162, 216, 0.2);
+      --alert-info-border: rgba(29, 162, 216, 0.3);
+      --alert-danger-bg: rgba(220, 53, 69, 0.2);
+      --alert-danger-border: rgba(220, 53, 69, 0.3);
+      --track-item-bg: rgba(255,255,255,0.05);
+      --track-item-hover: rgba(255,255,255,0.1);
+      --playlist-description-bg: linear-gradient(135deg, rgba(29, 185, 84, 0.1), rgba(29, 185, 84, 0.05));
+      --header-gradient: linear-gradient(to right, var(--spotify-green), #4aedc4);
+      --page-gradient: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, var(--dark-bg) 100%);
+    }
+    
+    /* Light mode variables */
+    [data-theme="light"] {
+      --spotify-green: #1DB954;
+      --spotify-green-hover: #1ed760;
+      --dark-bg: #f5f5f5;
+      --card-bg: #ffffff;
+      --card-hover: #f8f8f8;
+      --input-bg: #f0f0f0;
+      --text-primary: #222222; /* Darkened for better contrast */
+      --text-secondary: #444444; /* Darkened for better contrast */
+      --text-tertiary: #666666; /* Darkened for better contrast */
+      --border-color: rgba(0,0,0,0.1);
+      --alert-info-bg: rgba(29, 162, 216, 0.1);
+      --alert-info-border: rgba(29, 162, 216, 0.2);
+      --alert-danger-bg: rgba(220, 53, 69, 0.1);
+      --alert-danger-border: rgba(220, 53, 69, 0.2);
+      --track-item-bg: rgba(0,0,0,0.05); /* Slightly darker for better contrast */
+      --track-item-hover: rgba(0,0,0,0.08); /* Slightly darker for better contrast */
+      --playlist-description-bg: linear-gradient(135deg, rgba(29, 185, 84, 0.08), rgba(29, 185, 84, 0.04)); /* Slightly stronger gradient */
+      --header-gradient: linear-gradient(to right, var(--spotify-green), #4aedc4);
+      --page-gradient: linear-gradient(to bottom, rgba(245,245,245,0.8) 0%, var(--dark-bg) 100%);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: var(--dark-bg);
+      color: var(--text-primary);
+      font-family: 'Montserrat', Arial, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      background-image: var(--page-gradient);
+      background-attachment: fixed;
+      transition: all 0.3s ease;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-top: 20px;
+    }
+    
+    .header h1 {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      letter-spacing: -0.5px;
+      background: var(--header-gradient);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .header p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .card {
+      background-color: var(--card-bg);
+      border: none;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      padding: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+    }
+    
+    .card h3 {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .card h3 i {
+      color: var(--spotify-green);
+      margin-right: 12px;
+    }
+    
+    .card h4 {
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+    
+    .card p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    
+    .form-control {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 15px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control::placeholder {
+      color: var(--text-tertiary);
+    }
+    
+    .form-control:focus {
+      background-color: var(--input-bg);
+      color: var(--text-primary);
+      box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.3);
+      border-color: var(--spotify-green);
+    }
+    
+    .btn {
+      border-radius: 30px;
+      padding: 12px 30px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+      background-color: var(--spotify-green);
+      border: none;
+      color: white; /* Always white text on green button for better contrast */
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--spotify-green-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(29, 185, 84, 0.4);
+    }
+    
+    .track-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      background-color: var(--track-item-bg);
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Add subtle shadow for depth */
+    }
+    
+    .track-item:hover {
+      background-color: var(--track-item-hover);
+      border-left: 3px solid var(--spotify-green);
+      transform: translateX(5px);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15); /* Enhanced shadow on hover */
+    }
+    
+    [data-theme="light"] .track-item {
+      border: 1px solid rgba(0,0,0,0.08); /* Add subtle border in light mode */
+    }
+    
+    .track-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background-color: var(--card-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .track-image i {
+      font-size: 24px;
+      color: var(--spotify-green);
+    }
+    
+    .track-info {
+      flex-grow: 1;
+      margin-left: 20px;
+    }
+    
+    .track-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+    }
+    
+    .track-artist {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    .track-controls {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .track-controls a {
+      color: var(--spotify-green); /* Always use Spotify green for links */
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s ease;
+      font-weight: 500; /* Slightly bolder for better readability */
+      padding: 5px 10px; /* Add padding for better clickability */
+      border-radius: 4px; /* Rounded corners */
+      background-color: rgba(29, 185, 84, 0.1); /* Subtle background */
+    }
+    
+    .track-controls a i {
+      margin-right: 5px;
+    }
+    
+    .track-controls a:hover {
+      color: white;
+      background-color: var(--spotify-green);
+      transform: translateY(-2px);
+      box-shadow: 0 2px 5px rgba(29, 185, 84, 0.3); /* Add shadow on hover */
+    }
+    
+    .loading {
+      text-align: center;
+      display: none;
+      color: var(--text-primary);
+      padding: 20px 0;
+    }
+    
+    .spinner-border {
+      color: var(--spotify-green);
+      width: 3rem;
+      height: 3rem;
+    }
+    
+    .alert {
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 15px 20px;
+      font-weight: 500; /* Slightly bolder text for better readability */
+    }
+    
+    .alert-info {
+      background-color: var(--alert-info-bg);
+      border: 1px solid var(--alert-info-border);
+    }
+    
+    [data-theme="light"] .alert-info {
+      color: #0c5460; /* Darker text for light mode */
+      background-color: #d1ecf1; /* Standard Bootstrap info color for light mode */
+      border-color: #bee5eb;
+    }
+    
+    .alert-danger {
+      background-color: var(--alert-danger-bg);
+      border: 1px solid var(--alert-danger-border);
+    }
+    
+    [data-theme="light"] .alert-danger {
+      color: #721c24; /* Darker text for light mode */
+      background-color: #f8d7da; /* Standard Bootstrap danger color for light mode */
+      border-color: #f5c6cb;
+    }
+    
+    /* Playlist description styling */
+    .playlist-description {
+      background: var(--playlist-description-bg);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+      border-left: 4px solid var(--spotify-green);
+    }
+    
+    [data-theme="light"] .playlist-description {
+      background-color: rgba(29, 185, 84, 0.1); /* Stronger background in light mode */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Add subtle shadow for depth */
+    }
+    
+    .playlist-title {
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+    
+    .playlist-description p {
+      color: var(--text-primary); /* Ensure paragraph text uses primary color for better contrast */
+      line-height: 1.6; /* Improved line height for readability */
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .track-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .track-controls {
+        margin-top: 15px;
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .track-info {
+        margin-left: 0;
+        margin-top: 15px;
+        width: 100%;
+      }
+      
+      .track-image {
+        width: 100%;
+        height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme toggle button -->
+  <div class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode">
+    <i class="fas fa-sun theme-icon-light" aria-hidden="true"></i>
+    <i class="fas fa-moon theme-icon-dark" aria-hidden="true"></i>
+  </div>
+  
+  <div class="container">
+    <div class="header">
+      <h1>Spotify Song Recommender</h1>
+      <p>Discover your next favorite tracks with AI-powered music recommendations</p>
+    </div>
+    
+    <!-- AI Recommendation Section -->
+    <div class="card mb-4">
+      <h3><i class="fas fa-robot"></i> AI Music Discovery</h3>
+      <p>Tell us what you're in the mood for, and our AI will curate the perfect playlist just for you.</p>
+      <div class="mb-4">
+        <textarea id="ai-input" class="form-control" rows="3" placeholder="Example: I'm feeling down today and need some uplifting music that isn't too energetic. I usually like indie folk and acoustic songs."></textarea>
+      </div>
+      <button id="ai-submit" class="btn btn-primary"><i class="fas fa-magic"></i> Get Recommendations</button>
+      <div id="ai-loading" class="loading mt-4">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Crafting your personalized playlist...</p>
+      </div>
+      <div id="ai-results" class="mt-4"></div>
+    </div>
+    
+    <!-- Footer with information about the app -->
+    <div class="card mt-4">
+      <h3><i class="fas fa-info-circle"></i> About This App</h3>
+      <p>This application uses OpenAI's GPT-4.1-nano model to analyze your music preferences and generate personalized recommendations through the Spotify API.</p>
+      <p>Simply describe what kind of music you're looking for, and let the AI find your perfect soundtrack!</p>
+      <div class="d-flex align-items-center mt-4 pt-3 border-top border-dark">
+        <div class="me-3">
+          <i class="fab fa-spotify text-success fa-2x"></i>
+        </div>
+        <div>
+          <p class="mb-0">Powered by Spotify and OpenAI</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Theme toggle functionality
+      const themeToggle = document.getElementById('theme-toggle');
+      const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      // Check for saved theme preference or use the system preference
+      const currentTheme = localStorage.getItem('theme') || (prefersDarkScheme.matches ? 'dark' : 'light');
+      
+      // Apply the saved theme or system preference
+      if (currentTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+      
+      // Toggle theme when button is clicked
+      themeToggle.addEventListener('click', function() {
+        let theme;
+        
+        // If the current theme is dark, switch to light
+        if (document.documentElement.getAttribute('data-theme') !== 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          theme = 'light';
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+          theme = 'dark';
+        }
+        
+        // Save the theme preference
+        localStorage.setItem('theme', theme);
+      });
+      
+      // Elements
+      const aiInput = document.getElementById('ai-input');
+      const aiSubmit = document.getElementById('ai-submit');
+      const aiLoading = document.getElementById('ai-loading');
+      const aiResults = document.getElementById('ai-results');
+      
+      // Add enter key support for the input field
+      aiInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          aiSubmit.click();
+        }
+      });
+      
+      // AI recommendation
+      aiSubmit.addEventListener('click', function() {
+        const userInput = aiInput.value.trim();
+        if (userInput) {
+          // Show loading animation
+          aiLoading.style.display = 'block';
+          aiResults.innerHTML = '';
+          
+
+          
+          // Disable the button during loading
+          aiSubmit.disabled = true;
+          aiSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+          // Make API request to our backend
+          fetch('/ai_recommendation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              user_input: userInput
+            })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Server error: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            // Hide loading animation
+            aiLoading.style.display = 'none';
+            
+            // Reset button
+            aiSubmit.disabled = false;
+            aiSubmit.innerHTML = '<i class="fas fa-magic"></i> Get Recommendations';
+            
+            // Create a container for the results
+            const aiResponseContainer = document.createElement('div');
+            aiResponseContainer.className = 'card p-4 mt-4';
+            
+            // Add the container to the results area
+            aiResults.appendChild(aiResponseContainer);
+            
+            // Add the description with proper styling
+            if (data.description) {
+              const descriptionContainer = document.createElement('div');
+              descriptionContainer.className = 'playlist-description mb-4';
+              
+              // Parse the playlist title if it exists
+              if (data.description.includes('PLAYLIST TITLE:')) {
+                const parts = data.description.split('\n\n');
+                const titleText = parts[0].replace('PLAYLIST TITLE:', '').trim();
+                const descriptionText = parts.length > 1 ? parts[1] : '';
+                
+                const titleEl = document.createElement('div');
+                titleEl.className = 'playlist-title';
+                titleEl.textContent = titleText;
+                descriptionContainer.appendChild(titleEl);
+                
+                const descriptionEl = document.createElement('p');
+                descriptionEl.className = 'mb-0';
+                descriptionEl.textContent = descriptionText;
+                descriptionContainer.appendChild(descriptionEl);
+              } else {
+                // If no title format, just show the description
+                const descriptionEl = document.createElement('p');
+                descriptionEl.className = 'mb-0';
+                descriptionEl.textContent = data.description;
+                descriptionContainer.appendChild(descriptionEl);
+              }
+              
+              aiResponseContainer.appendChild(descriptionContainer);
+            }
+            
+            // Display AI song suggestions if available
+            if (data.ai_song_suggestions && data.ai_song_suggestions.length > 0) {
+              const suggestionsContainer = document.createElement('div');
+              suggestionsContainer.className = 'mt-4';
+              
+              const suggestionsHeader = document.createElement('div');
+              suggestionsHeader.className = 'd-flex justify-content-between align-items-center mb-3';
+              
+              const suggestionsTitle = document.createElement('h4');
+              suggestionsTitle.innerHTML = '<i class="fas fa-lightbulb me-2"></i> AI Song Suggestions';
+              suggestionsHeader.appendChild(suggestionsTitle);
+              
+              const suggestionsCount = document.createElement('span');
+              suggestionsCount.className = 'badge bg-primary rounded-pill';
+              suggestionsCount.textContent = `${data.ai_song_suggestions.length} songs`;
+              suggestionsHeader.appendChild(suggestionsCount);
+              
+              suggestionsContainer.appendChild(suggestionsHeader);
+              
+              const suggestionsList = document.createElement('div');
+              suggestionsList.id = 'ai-suggestions-list';
+              
+              data.ai_song_suggestions.forEach((suggestion, index) => {
+                // Parse the suggestion (assuming format like "Song Title - Artist Name")
+                let songTitle = suggestion;
+                let artistName = "";
+                
+                if (suggestion.includes(" - ")) {
+                  const parts = suggestion.split(" - ");
+                  songTitle = parts[0].trim();
+                  artistName = parts[1].trim();
+                } else if (suggestion.includes(" by ")) {
+                  const parts = suggestion.split(" by ");
+                  songTitle = parts[0].trim();
+                  artistName = parts[1].trim();
+                }
+                
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'track-item';
+                
+                const songInfo = document.createElement('div');
+                songInfo.className = 'track-info';
+                
+                const songTitleEl = document.createElement('div');
+                songTitleEl.className = 'track-title';
+                songTitleEl.textContent = songTitle;
+                
+                const artistNameEl = document.createElement('div');
+                artistNameEl.className = 'track-artist';
+                artistNameEl.textContent = artistName || "Unknown Artist";
+                
+                songInfo.appendChild(songTitleEl);
+                songInfo.appendChild(artistNameEl);
+                
+                const searchLink = document.createElement('div');
+                searchLink.className = 'track-controls';
+                
+                const spotifySearchUrl = `https://open.spotify.com/search/${encodeURIComponent(songTitle + (artistName ? ' ' + artistName : ''))}`;
+                const openSpotifyLink = document.createElement('a');
+                openSpotifyLink.href = spotifySearchUrl;
+                openSpotifyLink.target = '_blank';
+                openSpotifyLink.innerHTML = '<i class="fab fa-spotify"></i> Find on Spotify';
+                searchLink.appendChild(openSpotifyLink);
+                
+                suggestionItem.appendChild(songInfo);
+                suggestionItem.appendChild(searchLink);
+                
+                suggestionsList.appendChild(suggestionItem);
+              });
+              
+              suggestionsContainer.appendChild(suggestionsList);
+              aiResponseContainer.appendChild(suggestionsContainer);
+            }
+            
+            // Display Spotify tracks if available
+            if (data.spotify_tracks && data.spotify_tracks.length > 0) {
+              const tracksContainer = document.createElement('div');
+              tracksContainer.className = 'mt-4';
+              
+              const tracksHeader = document.createElement('div');
+              tracksHeader.className = 'd-flex justify-content-between align-items-center mb-3';
+              
+              const tracksTitle = document.createElement('h4');
+              tracksTitle.innerHTML = '<i class="fas fa-music me-2"></i> Spotify Recommendations';
+              tracksHeader.appendChild(tracksTitle);
+              
+              const tracksCount = document.createElement('span');
+              tracksCount.className = 'badge bg-success rounded-pill';
+              tracksCount.textContent = `${data.spotify_tracks.length} tracks`;
+              tracksHeader.appendChild(tracksCount);
+              
+              tracksContainer.appendChild(tracksHeader);
+              
+              const tracksList = document.createElement('div');
+              tracksList.id = 'ai-tracks-list';
+              
+              data.spotify_tracks.forEach((track, index) => {
+                const trackItem = document.createElement('div');
+                trackItem.className = 'track-item';
+                
+                // Add track image or placeholder
+                const trackImage = document.createElement('div');
+                trackImage.className = 'track-image';
+                trackImage.innerHTML = '<i class="fas fa-music"></i>';
+                
+                const trackInfo = document.createElement('div');
+                trackInfo.className = 'track-info';
+                
+                const trackTitle = document.createElement('div');
+                trackTitle.className = 'track-title';
+                trackTitle.textContent = track.name;
+                
+                const trackArtist = document.createElement('div');
+                trackArtist.className = 'track-artist';
+                trackArtist.textContent = track.artist;
+                
+                trackInfo.appendChild(trackTitle);
+                trackInfo.appendChild(trackArtist);
+                
+                const trackControls = document.createElement('div');
+                trackControls.className = 'track-controls';
+                
+                if (track.preview_url) {
+                  const previewLink = document.createElement('a');
+                  previewLink.href = track.preview_url;
+                  previewLink.target = '_blank';
+                  previewLink.innerHTML = '<i class="fas fa-play-circle"></i> Preview';
+                  trackControls.appendChild(previewLink);
+                }
+                
+                const spotifyLink = document.createElement('a');
+                spotifyLink.href = track.external_url;
+                spotifyLink.target = '_blank';
+                spotifyLink.innerHTML = '<i class="fab fa-spotify"></i> Open in Spotify';
+                trackControls.appendChild(spotifyLink);
+                
+                trackItem.appendChild(trackImage);
+                trackItem.appendChild(trackInfo);
+                trackItem.appendChild(trackControls);
+                tracksList.appendChild(trackItem);
+              });
+              
+              tracksContainer.appendChild(tracksList);
+              aiResponseContainer.appendChild(tracksContainer);
+            } else if (!data.spotify_tracks || data.spotify_tracks.length === 0) {
+              // Only show the 'No tracks found' message when the spotify_tracks array is empty or undefined
+              // This prevents the message from showing when there are tracks in the response
+              const noTracksMsg = document.createElement('div');
+              noTracksMsg.className = 'alert alert-info mt-3';
+              noTracksMsg.innerHTML = '<i class="fas fa-info-circle me-2"></i> No tracks found matching your criteria. Try a different description.';
+              aiResponseContainer.appendChild(noTracksMsg);
+            }
+            
+            // Display the AI response
+            if (data.ai_response) {
+              // Create a nicely formatted AI analysis section
+              const analysisContainer = document.createElement('div');
+              analysisContainer.className = 'ai-analysis mb-4';
+              
+              // Add genres if available
+              if (data.ai_response.genres && data.ai_response.genres.length > 0) {
+                const genresEl = document.createElement('div');
+                genresEl.className = 'mt-3';
+                genresEl.innerHTML = `<strong>Genres:</strong> ${data.ai_response.genres.join(', ')}`;
+                analysisContainer.appendChild(genresEl);
+              }
+              
+              // Add mood if available
+              if (data.ai_response.mood) {
+                const moodEl = document.createElement('div');
+                moodEl.className = 'mt-2';
+                const valence = data.ai_response.mood.valence ? 
+                  (data.ai_response.mood.valence > 0.7 ? 'Happy' : data.ai_response.mood.valence < 0.3 ? 'Melancholic' : 'Neutral') : 'Neutral';
+                const energy = data.ai_response.mood.energy ? 
+                  (data.ai_response.mood.energy > 0.7 ? 'Energetic' : data.ai_response.mood.energy < 0.3 ? 'Calm' : 'Moderate') : 'Moderate';
+                moodEl.innerHTML = `<strong>Mood:</strong> ${valence}, ${energy}`;
+                analysisContainer.appendChild(moodEl);
+              }
+              
+              // Prepend the analysis to the response container
+              aiResponseContainer.prepend(analysisContainer);
+            }
+            
+
+            
+            // Add user query for transparency
+            if (data.user_input) {
+              const queryContainer = document.createElement('div');
+              queryContainer.className = 'mt-4 pt-3 border-top border-dark';
+              
+              const queryEl = document.createElement('p');
+              queryEl.className = 'mb-1 small';
+              queryEl.innerHTML = `<strong>Your request:</strong> "${data.user_input}"`;
+              queryContainer.appendChild(queryEl);
+              
+              aiResponseContainer.appendChild(queryContainer);
+            }
+            
+            aiResults.appendChild(aiResponseContainer);
+            
+            // Scroll to results
+            aiResponseContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          })
+          .catch(error => {
+            aiLoading.style.display = 'none';
+            aiSubmit.disabled = false;
+            aiSubmit.innerHTML = '<i class="fas fa-magic"></i> Get Recommendations';
+            
+            aiResults.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i> Error: ${error.message}</div>`;
+          });
+        } else {
+          // Show error for empty input
+          aiResults.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i> Please enter a description of what music you're looking for.</div>`;
+          setTimeout(() => {
+            aiResults.innerHTML = '';
+          }, 3000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
